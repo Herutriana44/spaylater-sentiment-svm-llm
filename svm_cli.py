@@ -26,6 +26,13 @@ def run_svm_analysis(test_size):
     # Load data
     df = pd.read_csv("dataset_dengan_label_20260412_061422.csv")
     
+    # Undersampling: Balance classes
+    min_count = df["label"].value_counts().min()
+    df = pd.concat([
+        df[df["label"] == label].sample(min_count, random_state=42)
+        for label in df["label"].unique()
+    ])
+    
     # Preprocessing (Vectorizer only)
     X = df["text_clean"].fillna("").astype(str)
     y = df["label"]
