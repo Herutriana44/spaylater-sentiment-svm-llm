@@ -3,6 +3,7 @@ import json
 import os
 import zipfile
 import warnings
+import re
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
@@ -16,6 +17,12 @@ import seaborn as sns
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning)
+
+def clean_english_text(text):
+    text = str(text).lower()
+    text = re.sub(r'[^a-zA-Z\s]', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 def run_svm_analysis(test_size):
     # Setup paths
@@ -33,7 +40,8 @@ def run_svm_analysis(test_size):
         for label in df["label"].unique()
     ])
     
-    # Preprocessing (Vectorizer only)
+    # Preprocessing
+    df["text_clean"] = df["text_clean"].apply(clean_english_text)
     X = df["text_clean"].fillna("").astype(str)
     y = df["label"]
 
