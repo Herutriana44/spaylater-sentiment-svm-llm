@@ -1,0 +1,204 @@
+% Laporan: pipeline analisis sentimen (Gemini LLM + SVM) — Jupyter Notebook
+% Kompilasi: pdflatex (2x) atau latexmk -pdf
+% Ganti cuplikan kode: simpan screenshot per sel di folder figures/ atau gunakan \includegraphics
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[indonesian]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{xcolor}
+
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+
+% --- Cuplikan kode: kotak placeholder (hapus dan ganti \includegraphics jika sudah ada gambar) ---
+\newcommand{\CuplikanKode}[2]{%
+  \begin{figure}[htbp]
+    \centering
+    % \includegraphics[width=0.95\textwidth]{figures/#1}
+    \fbox{%
+      \parbox{0.92\textwidth}{%
+        \centering\vspace{3.2cm}
+        \textcolor{gray}{\textit{Tempat screenshot / cuplikan kode: #2}}\\
+        \vspace{0.3cm}
+        \textcolor{gray}{\small Berkas gambar disarankan: \texttt{figures/#1}}
+        \vspace{3.2cm}%
+      }%
+    }
+    \caption{#2}
+    \label{fig:#1}
+  \end{figure}%
+}
+
+\title{\textbf{Laporan Teknis:\\Analisis Sentimen Fitur SpayLater (ShopeePay)}\\[0.4em]
+\large Autolabeling dengan Google Gemini \& Klasifikasi dengan SVM}
+\author{%
+  \textit{(Nama penulis / NIM)}\\
+  Notebook sumber: \texttt{spaylater\_sentiment\_analysis\_gemini.ipynb}%
+}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Laporan ini mendokumentasikan alur kerja pada notebook Jupyter untuk analisis sentimen teks media sosial terkait SpayLater/ShopeePay: prapemrosesan bahasa Indonesia (Sastrawi), pelabelan otomatis tiga kelas (\textit{positif}, \textit{netral}, \textit{negatif}) memakai API Gemini, pelatihan model \textit{Support Vector Machine} (SVM) dengan TF--IDF, evaluasi ketepatan pada data uji, serta visualisasi \textit{wordcloud}. Setiap bagian kode dijelaskan dengan asumsi satu sel notebook setara dengan satu cuplikan layar kode.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%==============================================================================
+\section{Penjelasan per sel kode (cuplikan notebook)}
+\label{sec:sel-kode}
+
+\noindent
+\textbf{Catatan:} Nomor sel mengikuti indeks nol (\texttt{Cell 0}, \texttt{Cell 1}, \ldots) seperti urutan di \texttt{spaylater\_sentiment\_analysis\_gemini.ipynb}. Hanya sel bertipe \textbf{kode} yang diberi cuplikan; sel Markdown berisi narasi di notebook dan tidak diduplikasi di sini sebagai gambar.
+
+\subsection*{Sel 3 --- Daftar dependensi (\texttt{requirements.txt})}
+\CuplikanKode{sel03_requirements}{Sel 3: menulis berkas \texttt{requirements.txt} berisi \texttt{google-generativeai}, Sastrawi, pandas, scikit-learn, matplotlib, seaborn, dan wordcloud agar lingkungan dapat direplikasi.}
+
+\subsection*{Sel 4 --- Instalasi paket dari \texttt{requirements.txt}}
+\CuplikanKode{sel04_pip_requirements}{Sel 4: perintah \texttt{pip install -r requirements.txt} untuk menginstal dependensi utama analisis.}
+
+\subsection*{Sel 5 --- Paket unduhan Mega}
+\CuplikanKode{sel05_pip_mega}{Sel 5: menginstal \texttt{mega.py} untuk mengunduh dataset dari tautan Mega.nz (opsional jika data sudah lokal).}
+
+\subsection*{Sel 6 --- Penyesuaian \texttt{tenacity}}
+\CuplikanKode{sel06_pip_tenacity}{Sel 6: memutakhirkan \texttt{tenacity} guna mengurangi konflik dependensi dengan \texttt{mega.py} atau paket lain di lingkungan yang sama.}
+
+\subsection*{Sel 7 --- Unduh dataset dari Mega}
+\CuplikanKode{sel07_mega_download}{Sel 7: login anonim Mega, mengunduh berkas Excel/CSV proyek dari URL yang ditentukan, dan mencetak path berkas hasil unduhan.}
+
+\subsection*{Sel 8 --- Kunci API Gemini}
+\CuplikanKode{sel08_api_key}{Sel 8: menetapkan variabel lingkungan \texttt{GEMINI\_API\_KEY} untuk autentikasi ke Google AI Studio / Gemini API. \textbf{Jangan} menyertakan kunci asli dalam laporan versi akhir; gunakan variabel lingkungan atau redaksi.}
+
+\subsection*{Sel 10 --- Impor pustaka dan konfigurasi global}
+\CuplikanKode{sel10_config}{Sel 10: impor NumPy, pandas, scikit-learn, matplotlib, seaborn, WordCloud; konfigurasi path data (\texttt{CSV\_PATH}), folder ekspor (\texttt{EXPORT\_DIR}, \texttt{RAW\_RESPONSE\_DIR}), batas batch LLM (\texttt{MAX\_TOKEN\_DATA}, \texttt{MAX\_LLM\_BATCH\_ITEMS}), model Gemini (\texttt{LLM\_MODEL}), token keluaran, dan jeda antar batch (\texttt{LLM\_BATCH\_SLEEP\_SEC}).}
+
+\subsection*{Sel 11 --- Estimasi token (\texttt{count\_tokens})}
+\CuplikanKode{sel11_tiktoken}{Sel 11: mendefinisikan \texttt{count\_tokens} memakai \texttt{tiktoken} (\texttt{cl100k\_base}) jika tersedia; jika tidak, perkiraan kasar $\max(1, \lfloor |s|/4 \rfloor)$ untuk membantu membagi batch LLM.}
+
+\subsection*{Sel 13 --- Muat dataset}
+\CuplikanKode{sel13_read_excel}{Sel 13: membaca Excel dengan pandas, menampilkan cuplikan baris awal, dan memastikan kolom \texttt{full\_text} ada.}
+
+\subsection*{Sel 14 --- Sampel acak (opsional)}
+\CuplikanKode{sel14_sample}{Sel 14: membuat sampel acak berukuran \texttt{LEN\_SAMPLE\_DATA} untuk uji token; baris \texttt{df = df\_sampled} dapat diaktifkan untuk membatasi ukuran data.}
+
+\subsection*{Sel 15 --- Total token pada seluruh baris}
+\CuplikanKode{sel15_token_sum}{Sel 15: menghitung \texttt{token\_count} per baris pada \texttt{full\_text} dan menjumlahkan total token korpus.}
+
+\subsection*{Sel 16 --- Rasio estimasi token}
+\CuplikanKode{sel16_ratio}{Sel 16: operasi aritmetika sederhana (mis. perbandingan total token terhadap sampel) untuk estimasi skala data.}
+
+\subsection*{Sel 17 --- Jumlah baris}
+\CuplikanKode{sel17_len}{Sel 17: \texttt{len(df)} untuk mencetak jumlah observasi.}
+
+\subsection*{Sel 18 --- Histogram panjang token}
+\CuplikanKode{sel18_hist}{Sel 18: histogram distribusi \texttt{token\_count} untuk melihat sebaran panjang teks.}
+
+\subsection*{Sel 20 --- Fungsi prapemrosesan teks}
+\CuplikanKode{sel20_preprocess}{Sel 20: kamus singkatan (\texttt{SLANG\_MAP}), regex URL/email/mention/hashtag, normalisasi Unicode, stemming dan stopword Sastrawi, serta \texttt{preprocess\_series} untuk diterapkan ke kolom DataFrame.}
+
+\subsection*{Sel 22 --- Demo langkah prapemrosesan}
+\CuplikanKode{sel22_demo}{Sel 22: fungsi \texttt{demo\_steps} mencetak tiap tahap prapemrosesan untuk beberapa sampel pertama (\texttt{full\_text}) guna verifikasi visual.}
+
+\subsection*{Sel 24 --- Terapkan prapemrosesan ke seluruh data}
+\CuplikanKode{sel24_text_clean}{Sel 24: membuat kolom \texttt{text\_clean} dari \texttt{full\_text}; kolom ini dipakai sebagai fitur masukan SVM.}
+
+\subsection*{Sel 25 --- Penanda / sel cadangan}
+\CuplikanKode{sel25_placeholder}{Sel 25: sel kode kosong atau komentar penanda; dapat diabaikan atau diisi eksperimen singkat.}
+
+\subsection*{Sel 27 --- Autolabel dengan Gemini (inti)}
+\CuplikanKode{sel27_autolabel}{Sel 27: integrasi \texttt{google.generativeai}; normalisasi label; parsing JSON array respons LLM (\texttt{parse\_llm\_sentiment\_labels\_json}, \texttt{extract\_first\_json\_array}); pembagian batch; penyimpanan respons mentah ke \texttt{raw\_response/}; rekursi pemecahan batch jika parsing gagal; penanganan kuota; pengisian kolom \texttt{label} pada DataFrame.}
+
+\subsection*{Sel 29 --- Nilai unik label}
+\CuplikanKode{sel29_label_unique}{Sel 29: \texttt{df['label'].unique()} untuk memeriksa kelas setelah autolabel (atau jika label sudah ada di file).}
+
+\subsection*{Sel 30 --- Pelatihan SVM dan pencarian hyperparameter}
+\CuplikanKode{sel30_svm_grid}{Sel 30: pemetaan label ke integer; \texttt{Pipeline} TF--IDF (1--2 gram) + \texttt{SVC} linear berbobot kelas seimbang; \texttt{GridSearchCV} pada kombinasi \texttt{max\_features} dan \texttt{C}; pencarian \texttt{test\_size} terbaik pada hold-out terstratifikasi; menyimpan model dan data uji terbaik.}
+
+\subsection*{Sel 32 --- Matriks kebingungan dan laporan klasifikasi}
+\CuplikanKode{sel32_confusion}{Sel 32: prediksi pada \texttt{X\_test}; matriks kebingungan dengan heatmap Seaborn; cetak \texttt{classification\_report} (precision, recall, F1); simpan gambar dan teks laporan ke \texttt{EXPORT\_DIR}.}
+
+\subsection*{Sel 34 --- Wordcloud}
+\CuplikanKode{sel34_wordcloud}{Sel 34: menggabungkan \texttt{text\_clean} menjadi satu string, membuat \textit{wordcloud}, menampilkan dan menyimpan PNG.}
+
+\subsection*{Sel 36 --- Ekspor artefak dan ZIP}
+\CuplikanKode{sel36_export_zip}{Sel 36: menyimpan CSV berlabel, sampel prapemrosesan, \texttt{summary.json} (akurasi hold-out, parameter terbaik, ukuran data), mengompres isi folder ekspor menjadi satu berkas ZIP.}
+
+\subsection*{Sel 37 --- Unduh ZIP (Google Colab)}
+\CuplikanKode{sel37_colab_download}{Sel 37: \texttt{files.download} Colab untuk mengunduh arsip hasil; di lingkungan lokal, langkah ini dapat diganti membuka folder ekspor secara manual.}
+
+\newpage
+%==============================================================================
+\section{Hasil analisis sentimen}
+\label{sec:hasil}
+
+\subsection{Ringkasan alur dan interpretasi umum}
+
+Setelah seluruh pipeline dijalankan, \textbf{hasil analisis sentimen} dapat dibahas dalam kerangka berikut.
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Distribusi label (autolabel LLM).}
+  Kolom \texttt{label} merepresentasikan sentimen tiap dokumen: \textit{positif}, \textit{netral}, atau \textit{negatif}.
+  Sebaiknya dilaporkan jumlah dan proporsi per kelas (bisa dihitung dengan \texttt{df['label'].value\_counts(normalize=True)}) untuk melihat apakah data \textit{imbalance} dan apakah autolabel menghasilkan pola yang masuk akal untuk domain SpayLater/ShopeePay.
+
+  \item \textbf{Pemilihan pembagian data dan model.}
+  Notebook membandingkan beberapa nilai \texttt{test\_size} dan memilih kombinasi yang memberi \textbf{akurasi hold-out tertinggi} setelah \texttt{GridSearchCV} pada data latih.
+  Pada \texttt{summary.json} (dan keluaran Sel 30) tercatat \texttt{best\_test\_size}, \texttt{holdout\_accuracy}, \texttt{best\_cv\_accuracy}, dan \texttt{best\_params} --- nilai inilah yang harus Anda kutip sebagai \textbf{hasil utama} kinerja SVM pada skenario data Anda.
+
+  \item \textbf{Matriks kebingungan.}
+  Heatmap membandingkan label aktual (baris) dan prediksi (kolom).
+  Elemen diagonal besar berarti klasifikasi benar untuk kelas tersebut; kesalahan dominan di luar diagonal mengindikasikan pasangan kelas yang sering tertukar (misalnya netral vs positif), yang relevan untuk membahas kualitas teks atau ambiguitas opini pengguna.
+
+  \item \textbf{Laporan klasifikasi (precision, recall, F1).}
+  Untuk tiap kelas, \textit{precision} menjawab seberapa dapat dipercaya prediksi positif untuk kelas itu; \textit{recall} seberapa banyak kasus aktual yang tertangkap; \textit{F1} menyeimbangkan keduanya.
+  Pada dataset tidak seimbang, akurasi global saja bisa menyesatkan; F1 per kelas dan rata-rata makro/terbobot lebih informatif.
+
+  \item \textbf{Wordcloud.}
+  Visual ini menonjolkan kata-kata frekuensi tinggi pada \texttt{text\_clean} setelah normalisasi.
+  Kata yang dominan dapat mendukung narasi apakah wacana publik lebih sering menyentuh tema bunga, limit, keterlambatan, promo, dan sebagainya --- diselaraskan dengan distribusi sentimen.
+
+  \item \textbf{Keterbatasan.}
+  Label dari LLM bergantung pada kualitas prompt dan kuota API; SVM pada TF--IDF memodelkan asosiasi leksikal tanpa konteks mendalam seperti model besar.
+  Hasil bersifat \textit{indikatif} untuk penelitian/exploratory analysis dan sebaiknya divalidasi dengan sampel anotasi manusia bila digunakan untuk keputusan penting.
+\end{enumerate}
+
+\subsection{Tabel ringkasan (isi dari notebook Anda)}
+
+\noindent
+Isi tabel berikut dengan angka yang muncul di keluaran Sel 30--32 / berkas \texttt{summary.json} setelah Anda menjalankan notebook.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Ringkasan metrik evaluasi (lengkapi setelah eksekusi notebook)}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Ukuran} & \textbf{Nilai} \\
+    \midrule
+    Jumlah sampel (\texttt{n\_samples}) & \ldots \\
+    Proporsi kelas negatif / netral / positif & \ldots \\
+    \texttt{test\_size} terpilih & \ldots \\
+    Akurasi hold-out & \ldots \\
+    Akurasi CV terbaik (latih) & \ldots \\
+    Parameter terbaik (\texttt{max\_features}, \texttt{C}) & \ldots \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Paragraf contoh pembahasan (sesuaikan angka)}
+
+\textit{Model SVM dengan vektorisasi TF--IDF pada teks yang telah dinormalisasi mencapai akurasi hold-out sebesar \textbf{[\ldots]} dengan pembagian uji \textbf{[\ldots\%]}. Dari matriks kebingungan, kelas yang paling sulit dipisahkan adalah \textbf{[\ldots]}. Wordcloud menunjukkan kata-kata seperti \textbf{[\ldots]} mendominasi korpus, selaras dengan proporsi sentimen \textbf{[\ldots]}. Autolabel Gemini mempercepat pelabelan skala besar; namun sampel validasi manual disarankan pada kasus ambigu.}
+
+\vspace{1em}
+\noindent
+\textbf{Referensi kode:} seluruh implementasi terperinci berada di \texttt{spaylater\_sentiment\_analysis\_gemini.ipynb}.
+
+\end{document}

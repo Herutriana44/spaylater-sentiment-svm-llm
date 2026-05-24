@@ -1,0 +1,35 @@
+buatkan kode analisis sentimen dimana dataset nya dari file csv(bisa buat dummy dulu dengan hanya 1 kolom saja yaitu kolom `text`). analisis sentimen ini menggunakan autolabelling menggunakan llm menggunakan openai openrouter dengan contoh kode berikut
+
+```
+from openai import OpenAI
+import os
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ["OPENROUTER_API_KEY"]
+)
+
+response = client.chat.completions.create(
+    model="openrouter/auto",  # bisa diganti model lain
+    messages=[
+        {"role": "system", "content": "Kamu adalah asisten AI yang membantu."},
+        {"role": "user", "content": "Jelaskan apa itu LLM secara singkat"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+setelah autolabelling, lakukan searchgridCV SVM(cari akurasi paling terbaik), setelah itu lakukan evaluasi confussion matrix dan classification report, tampilkan juga wordcloud. 
+
+untuk metode autolabelling nya, buat menjadi list text dulu hingga total token mendekati maksimal token yang ditentukan(MAX_TOKEN_DATA), setelah itu baru consume ke LLM dengan ekspektasi outptunya adalah list sentimen(negatif, netral, dan positif) kode python yang bisa di parse menjadi list kode python, setelah itu langsung di input ke dataframe
+
+catatan :
+1. dataset berbahasa indonesia
+2. sebelum di input ke LLM atau training, terdapat preprocessing(buatkan fungsi preprocessing selengkap mungkin, asumsi dataset dari media sosial)
+3. untuk split training, lakukan searchgridCV juga untuk mencari mana split training terbaik
+4. terdapat opsi penggunaan autolabelling, jika sudah ada kolom `label`, maka bisa langsung ke modelling SVM
+5. kode dalam format jupyter notebook
+6. tambahkan penjelasan singkat di setiap kode
+7. setiap hasil evaluasi, hasil preprocessing, gambar dll di export dan dibuat menjadi 1 zip
+8. terdapat kode tahapan preprocessing untuk menampilkan langkah demi langkah preprocessing dengan menggunakan sample 5 data saja. 

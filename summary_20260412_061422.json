@@ -1,0 +1,11 @@
+{
+  "best_test_size": 0.15,
+  "holdout_accuracy": 0.6317907444668008,
+  "best_cv_accuracy": 0.6242020919676337,
+  "best_params": {
+    "svc__C": 0.5,
+    "tfidf__max_features": 5000
+  },
+  "n_samples": 6622,
+  "timestamp": "20260412_061422"
+}
