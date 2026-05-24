@@ -46,10 +46,9 @@ def run_svm_analysis(test_size):
     y = df["label"]
 
     # Split data
-    # Chronological split: Take the first N samples as the test set
-    split_idx = int(len(df) * test_size)
-    X_test, X_train = X.iloc[:split_idx], X.iloc[split_idx:]
-    y_test, y_train = y.iloc[:split_idx], y.iloc[split_idx:]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=42, stratify=y
+    )
 
     # Pipeline
     pipeline = Pipeline([
