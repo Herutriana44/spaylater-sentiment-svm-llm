@@ -61,6 +61,14 @@ def run_svm_analysis(test_size):
     grid = GridSearchCV(pipeline, param_grid, cv=5, n_jobs=-1, verbose=1)
     grid.fit(X_train, y_train)
 
+    # Accuracy logging
+    accuracy = grid.score(X_test, y_test)
+    print(f"Model Accuracy: {accuracy:.4f}")
+
+    # Predict on entire dataset
+    df["prediksi"] = grid.predict(df["text_clean"].fillna("").astype(str))
+    df.to_csv(export_dir / "dataset_with_predictions.csv", index=False)
+
     # Predictions
     y_pred = grid.predict(X_test)
 
