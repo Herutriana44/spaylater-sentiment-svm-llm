@@ -18,11 +18,21 @@ import seaborn as sns
 # Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
+# Basic list of English stopwords for filtering without NLTK
+STOPWORDS = set(['a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'of', 'about'])
+
 def clean_english_text(text):
     text = str(text).lower()
-    text = re.sub(r'[^a-zA-Z\s]', '', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+    # Handle negation
+    text = re.sub(r'not\s+([a-z]+)', r'not_\1', text)
+    # Remove special chars
+    text = re.sub(r'[^a-zA-Z_\s]', '', text)
+    # Remove stopwords
+    words = text.split()
+    text = ' '.join([w for w in words if w not in STOPWORDS])
+    # Basic lemmatization (simple truncation for common suffixes)
+    text = re.sub(r'(ing|ed|s|es|ly)$', '', text)
+    return text.strip()
 
 def run_svm_analysis(test_size):
     # Setup paths
@@ -50,11 +60,12 @@ def run_svm_analysis(test_size):
         X, y, test_size=test_size, random_state=42, stratify=y
     )
 
-    # Pipeline
+    # Pipeline with class_weight='balanced'
     pipeline = Pipeline([
-        ("tfidf", TfidfVectorizer(ngram_range=(1, 2), max_features=5000)),
-        ("svc", SVC())
+        ("tfidf", TfidfVectorizer(ngram_range=(1, 3), max_features=5000)),
+        ("svc", SVC(class_weight='balanced'))
     ])
+
 
     # Expanded parameter grid
     param_grid = {
