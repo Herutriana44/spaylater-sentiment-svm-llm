@@ -79,6 +79,10 @@ def run_svm_analysis(test_size):
 
     # Predictions
     y_pred = grid.predict(X_test)
+    
+    # Export test predictions
+    test_results = pd.DataFrame({'text': X_test, 'actual': y_test, 'prediksi': y_pred})
+    test_results.to_csv(export_dir / "test_set_predictions.csv", index=False)
 
     # Save Results
     # 1. Classification Report
