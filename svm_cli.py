@@ -6,7 +6,19 @@ import warnings
 import re
 from datetime import datetime
 from pathlib import Path
-import pandas as pd
+import sys
+import subprocess
+
+def install_package(package_name):
+    try:
+        print(f"Sedang menginstal {package_name}...")
+        # Menggunakan sys.executable memastikan pip berjalan di lingkungan Python yang sama
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+        print(f"Berhasil menginstal {package_name}!")
+    except subprocess.CalledProcessError as e:
+        print(f"Gagal menginstal {package_name}. Error: {e}")
+install_package("openpyxl")
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.svm import SVC
@@ -14,6 +26,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -137,6 +150,7 @@ def run_svm_analysis(test_size):
     print(f"Analysis complete. Results exported to {export_dir} and zipped as {zip_filename}")
 
 if __name__ == "__main__":
+    install_package("openpyxl")
     parser = argparse.ArgumentParser(description="SVM Sentiment Analysis CLI Tool")
     parser.add_argument("--test-size", type=float, default=0.2, help="Test set size (0.1 - 0.5)")
     args = parser.parse_args()
