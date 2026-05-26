@@ -52,8 +52,9 @@ def run_svm_analysis(test_size):
     export_dir.mkdir(parents=True, exist_ok=True)
 
     # Load data
-    df = pd.read_csv("dataset_dengan_label_20260412_061422.csv")
-    
+    # df = pd.read_csv("dataset_dengan_label_20260412_061422.csv")
+    df = pd.read_excel("try_only_en_id_dataset_spaylater.xlsx")
+
     # Undersampling: Balance classes
     min_count = df["label"].value_counts().min()
     df = pd.concat([
