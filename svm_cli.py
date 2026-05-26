@@ -21,6 +21,17 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # Basic list of English stopwords for filtering without NLTK
 STOPWORDS = set(['a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'of', 'about'])
 
+def count_others_symbol(text):
+    """
+    Counts characters that are NOT alphabet, numeric, or common keyboard symbols.
+    Common keyboard symbols are generally ASCII printable characters (range 32-126).
+    We also exclude common whitespace characters (space, tab, newline, etc.).
+    """
+    if pd.isna(text):
+        return 0
+    # [^\x20-\x7E\s] matches any character that is NOT a printable ASCII or a whitespace
+    return len(re.findall(r'[^\x20-\x7E\s]', str(text)))
+
 def clean_english_text(text):
     text = str(text).lower()
     # Handle negation
@@ -49,8 +60,9 @@ def run_svm_analysis(test_size):
         df[df["label"] == label].sample(min_count, random_state=42)
         for label in df["label"].unique()
     ])
-    
+
     # Preprocessing
+    df["others_symbol_count"] = df["full_text"].apply(count_others_symbol)
     df["text_clean"] = df["text_clean"].apply(clean_english_text)
     X = df["text_clean"].fillna("").astype(str)
     y = df["label"]
