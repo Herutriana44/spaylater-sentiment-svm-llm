@@ -11,3 +11,4 @@ ipykernel>=6.0.0
 Sastrawi>=1.0.1
 pylatexenc
 openpyxl
+langdetect

@@ -27,6 +27,35 @@ from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+from langdetect import detect, DetectorFactory
+from langdetect.lang_detect_exception import LangDetectException
+
+# Memastikan hasil deteksi konsisten dan tidak berubah-ubah
+DetectorFactory.seed = 0
+
+def deteksi_bahasa(teks):
+    # Validasi input: jika bukan string atau string kosong
+    if not teks or not isinstance(teks, str).strip():
+        return False
+    
+    try:
+        # Mendeteksi kode bahasa (contoh: 'id', 'en', 'tl')
+        kode_bahasa = detect(teks)
+        
+        # Pemetaan kode bahasa ke nama bahasa yang diinginkan
+        kamus_bahasa = {
+            'id': 'Indonesia',
+            'en': 'Inggris',
+            'id_MS': 'Malaysia',  # Beberapa kasus langdetect membaca melayu/malaysia sebagai id atau ms
+            'ms': 'Malaysia'
+        }
+        
+        # Kembalikan nama bahasa jika cocok, jika tidak kembalikan False
+        return kamus_bahasa.get(kode_bahasa, False)
+        
+    except LangDetectException:
+        # Mengatasi error jika teks tidak mengandung huruf (misal: hanya angka/simbol)
+        return False
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -78,6 +107,9 @@ def run_svm_analysis(test_size):
     # Preprocessing
     df["others_symbol_count"] = df["full_text"].apply(count_others_symbol)
     df["text_clean"] = df["text_clean"].apply(clean_english_text)
+
+    df["bahasa"] = df["text_clean"].apply(deteksi_bahasa)
+
     X = df["text_clean"].fillna("").astype(str)
     y = df["label"]
 
