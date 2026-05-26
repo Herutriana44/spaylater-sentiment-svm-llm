@@ -104,6 +104,8 @@ def run_svm_analysis(test_size):
         for label in df["label"].unique()
     ])
 
+    df = df.reset_index(drop=True)
+
     # Preprocessing
     df["others_symbol_count"] = df["full_text"].apply(count_others_symbol)
     df["text_clean"] = df["text_clean"].apply(clean_english_text)
