@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 import sys
 import subprocess
+import unicodedata
 
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
