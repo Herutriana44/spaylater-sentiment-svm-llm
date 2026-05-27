@@ -35,7 +35,7 @@ DetectorFactory.seed = 0
 
 def deteksi_bahasa(teks):
     # Validasi input: jika bukan string atau string kosong
-    if not teks or not isinstance(teks, str).strip():
+    if pd.isna(teks) or not isinstance(teks, str) or not str(teks).strip():
         return "kosong"
     
     try:
@@ -108,7 +108,7 @@ def run_svm_analysis(test_size):
 
     # Preprocessing
     df["others_symbol_count"] = df["full_text"].apply(count_others_symbol)
-    df["text_clean"] = df["text_clean"].apply(clean_english_text)
+    df["text_clean"] = df["full_text"].apply(clean_english_text)
 
     df["bahasa"] = df["text_clean"].apply(deteksi_bahasa)
 
