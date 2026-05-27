@@ -64,20 +64,170 @@ def count_others_symbol(text):
     return len(re.findall(r'[^\x20-\x7E\s]', str(text)))
 
 
-def clean_english_text(text):
+SLANG_MAP = {
+    # Jaksel / Slang Inggris-Indo
+    "literally": "benar-benar", "which-is": "yang mana", "prefer": "lebih suka",
+    "fyi": "sebagai informasi", "btw": "ngomong-ngomong", "tbh": "sejujurnya",
+    # Slang Indonesia / Chat shortened
+    "yg": "yang", "gk": "tidak", "ga": "tidak", "gak": "tidak", "tdk": "tidak",
+    "bgt": "banget", "mager": "malas gerak", "healing": "liburan",
+    "lu": "kamu", "lo": "kamu", "gw": "saya", "gue": "saya", "aq": "saya",
+    "dgn": "dengan", "dlm": "dalam", "bisaa": "bisa", "jd": "jadi",
+    # Tambahkan padanan lain sesuai temuan di dataset Anda
+}
+
+# Gabungan Stopwords (Inggris + Indonesia) yang sudah difilter agar kata sentimen/negasi TIDAK hilang
+# Catatan: Kata seperti "tidak", "bukan", "not", "no" HARUS dihapus dari daftar stopwords 
+# agar tidak merusak analisis sentimen.
+CUSTOM_STOPWORDS = {
+    # Indo
+    "yang", "untuk", "pada", "ke", "para", "namun", "menurut", "atau", "dan", "bahwa", "di",
+    # English
+    "the", "a", "an", "and", "is", "are", "was", "were", "to", "of", "for", "in", "on", "at"
+}
+
+def clean_mixed_twitter_text(text):
     if pd.isna(text):
         return ""
+    
+    # 1. Decode HTML & Ubah ke lowercase
     text = str(text).lower()
-    # Handle negation
-    text = re.sub(r'not\s+([a-z]+)', r'not_\1', text)
-    # Remove special chars except underscore
-    text = re.sub(r'[^a-zA-Z_\s]', '', text)
-    # Remove stopwords
+    
+    # 2. Hapus URL, Twitter Username (@user), dan Hashtag (#tag)
+    # Catatan: Jika hashtag mengandung makna sentimen (misal #kecewa), 
+    # Anda bisa menghapus simbol '#' saja dengan re.sub(r'#([^\s]+)', r'\1', text)
+    text = re.sub(re.compile(r"https?://\S+|www\.\S+"), "", text)
+    text = re.sub(re.compile(r"@[^\s]+"), "", text)
+    text = re.sub(re.compile(r"#[^\s]+"), "", text)
+    
+    # 3. Bersihkan Emoji dan Karakter Non-ASCII
+    text = text.encode('ascii', 'ignore').decode('ascii')
+    
+    # 4. Standarisasi Karakter Berulang (misal: "bangeeeet" -> "banget", "loooove" -> "love")
+    # Mengurangi huruf yang berulang lebih dari 2 kali menjadi maksimal 2 huruf
+    text = re.sub(r'(.)\1+', r'\1\1', text)
+    
+    # 5. Hapus Tanda Baca dan Karakter Spesial (Kecuali Huruf dan Spasi)
+    text = re.sub(r'[^a-zA-Z\s]', ' ', text)
+    
+    # 6. Tokenisasi (Pecah jadi kata) untuk pemrosesan kata demi kata
     words = text.split()
-    text = ' '.join([w for w in words if w not in STOPWORDS])
-    # Simple lemmatization
-    text = re.sub(r'(ing|ed|s|es|ly)$', '', text, flags=re.IGNORECASE)
-    return text.strip()
+    
+    # 7. Normalisasi Slang / Bahasa Jaksel
+    words = [SLANG_MAP.get(word, word) for word in words]
+    
+    # 8. Handling Negasi Campuran (Menghubungkan 'not' atau 'tidak' dengan kata setelahnya)
+    # Contoh: "not good" -> "not_good", "tidak suka" -> "tidak_suka"
+    cleaned_words = []
+    skip = False
+    for i in range(len(words)):
+        if skip:
+            skip = False
+            continue
+        
+        # Cek jika kata saat ini adalah kata negasi dan ada kata berikutnya
+        if words[i] in ['not', 'tidak', 'tak', 'gak', 'kurang'] and (i + 1) < len(words):
+            # Gabungkan dengan kata setelahnya
+            cleaned_words.append(f"{words[i]}_{words[i+1]}")
+            skip = True  # Lewati kata berikutnya pada iterasi selanjutnya
+        else:
+            cleaned_words.append(words[i])
+            
+    # 9. Filter Stopwords (Hanya hapus kata yang benar-benar tidak bermakna)
+    final_words = [w for w in cleaned_words if w not in CUSTOM_STOPWORDS]
+    
+    # 10. Gabungkan kembali dan bersihkan spasi berlebih
+    return " ".join(final_words).strip()
+
+# Kamus singkatan umum (bisa diperluas)
+SLANG_MAP = {
+    "gk": "tidak",
+    "ga": "tidak",
+    "gak": "tidak",
+    "yg": "yang",
+    "dgn": "dengan",
+    "utk": "untuk",
+    "krn": "karena",
+    "jd": "jadi",
+    "tp": "tapi",
+    "tpi": "tapi",
+    "sm": "sama",
+    "bgt": "banget",
+    "banget": "banget",
+    "trs": "terus",
+    "knp": "kenapa",
+    "sy": "saya",
+    "gue": "saya",
+    "lu": "kamu",
+    "udh": "sudah",
+    "udah": "sudah",
+}
+
+URL_RE = re.compile(r"http\S+|www\.\S+")
+EMAIL_RE = re.compile(r"[\w.-]+@[\w.-]+")
+MENTION_RE = re.compile(r"@\w+")
+MULTISPACE_RE = re.compile(r"\s+")
+REPEAT_CHAR_RE = re.compile(r"(.)\1{2,}")
+
+from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
+
+_factory_sw = StopWordRemoverFactory()
+_stopword_remover = _factory_sw.create_stop_word_remover()
+_factory_stem = StemmerFactory()
+_stemmer = _factory_stem.create_stemmer()
+
+
+def expand_slang_tokens(text: str) -> str:
+    toks = text.split()
+    out = [SLANG_MAP.get(t, t) for t in toks]
+    return " ".join(out)
+
+
+def apply_sastrawi_stopword_and_stem(text: str) -> str:
+    """Hapus stopword lalu stem dengan Sastrawi (Bahasa Indonesia)."""
+    if not text or not str(text).strip():
+        return text if isinstance(text, str) else str(text)
+    t = _stopword_remover.remove(text)
+    t = MULTISPACE_RE.sub(" ", t).strip()
+    if not t:
+        return ""
+    t = _stemmer.stem(t)
+    return MULTISPACE_RE.sub(" ", str(t)).strip()
+
+
+def preprocess_text(text: str, remove_digits: bool = False, use_sastrawi: bool = True) -> str:
+    if not isinstance(text, str):
+        text = str(text)
+    # Unicode NFKC
+    t = unicodedata.normalize("NFKC", text)
+    t = t.strip()
+    # URL & email
+    t = URL_RE.sub(" ", t)
+    t = EMAIL_RE.sub(" ", t)
+    # Mention → token umum (pertahankan konteks bahwa ada mention)
+    t = MENTION_RE.sub(" mention ", t)
+    # Hashtag: pertahankan kata tanpa #
+    t = re.sub(r"#(\w+)", r"\1", t)
+    # Huruf kecil
+    t = t.lower()
+    # Angka opsional
+    if remove_digits:
+        t = re.sub(r"\d+", " ", t)
+    # Tanda baca berlebih → spasi
+    t = re.sub(r"[\[\](){}\[\]<>]", " ", t)
+    # Ulang karakter berlebihan (mis. "bagusssss" → "bagus")
+    t = REPEAT_CHAR_RE.sub(r"\1\1", t)
+    t = MULTISPACE_RE.sub(" ", t).strip()
+    # Singkatan
+    t = expand_slang_tokens(t)
+    if use_sastrawi:
+        t = apply_sastrawi_stopword_and_stem(t)
+    return t
+
+
+def preprocess_series(series: pd.Series, **kwargs) -> pd.Series:
+    return series.astype(str).map(lambda x: preprocess_text(x, **kwargs))
 
 
 # ==================== MAIN ANALYSIS ====================
@@ -107,8 +257,8 @@ def run_svm_analysis(test_size=0.2):
     # Preprocessing
     print("Preprocessing teks...")
     df["others_symbol_count"] = df["full_text"].apply(count_others_symbol)
-    df["text_clean"] = df["full_text"].apply(clean_english_text)   # ← Diperbaiki
-
+    df["text_clean"] = preprocess_series(df["full_text"], remove_digits=False)
+    df["text_clean"] = df["text_clean"].apply(clean_mixed_twitter_text)   # ← Diperbaiki
     df["bahasa"] = df["text_clean"].apply(deteksi_bahasa)
 
     X = df["text_clean"].fillna("")
