@@ -36,7 +36,7 @@ DetectorFactory.seed = 0
 def deteksi_bahasa(teks):
     # Validasi input: jika bukan string atau string kosong
     if not teks or not isinstance(teks, str).strip():
-        return False
+        return "kosong"
     
     try:
         # Mendeteksi kode bahasa (contoh: 'id', 'en', 'tl')
