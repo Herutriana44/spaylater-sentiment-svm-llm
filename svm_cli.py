@@ -51,11 +51,11 @@ def deteksi_bahasa(teks):
         }
         
         # Kembalikan nama bahasa jika cocok, jika tidak kembalikan False
-        return kamus_bahasa.get(kode_bahasa, False)
+        return kamus_bahasa.get(kode_bahasa, "kosong")
         
     except LangDetectException:
         # Mengatasi error jika teks tidak mengandung huruf (misal: hanya angka/simbol)
-        return False
+        return "kosong"
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning)
