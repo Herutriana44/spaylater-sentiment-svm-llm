@@ -22,7 +22,7 @@ jobs:
           
       - name: Install dependencies
         run: |
-          pip install pandas scikit-learn matplotlib seaborn
+          pip install pandas scikit-learn matplotlib seaborn openpyxl langdetect
           
       - name: Run SVM experiment
         run: |
