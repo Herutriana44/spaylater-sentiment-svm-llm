@@ -255,6 +255,7 @@ def run_svm_analysis(test_size=0.2):
         df[df["label"] == label].sample(min_count, random_state=42)
         for label in df["label"].unique()
     ]).reset_index(drop=True)
+    print(f"panjang data {len(df)}")
 
     # Preprocessing
     print("Preprocessing teks...")
