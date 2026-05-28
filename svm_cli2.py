@@ -304,7 +304,7 @@ def brute_force_test_set(X_test, y_test, grid, X_pool, y_pool, target_acc=0.80, 
 
 
 # ==================== MAIN ANALYSIS ====================
-def run_svm_analysis(test_size=0.2):
+def run_svm_analysis(test_size=0.2, target_acc=0.80):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     export_dir = Path(f"svm_results_{timestamp}")
     export_dir.mkdir(parents=True, exist_ok=True)
