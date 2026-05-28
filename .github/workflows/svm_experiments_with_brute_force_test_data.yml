@@ -1,0 +1,41 @@
+name: SVM Sentiment Experiments With Brute Force Test Data
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  run-experiment:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-size: [0.10, 0.15, 0.20, 0.25, 0.30]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pandas scikit-learn matplotlib seaborn openpyxl langdetect
+          
+      - name: Run SVM experiment
+        run: |
+          python3 svm_cli2.py --test-size ${{ matrix.test-size }}
+          
+      - name: Rename result zip
+        run: |
+          mv svm_results_*.zip results_test_size_${{ matrix.test-size }}.zip
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-test-size-${{ matrix.test-size }}
+          path: results_test_size_${{ matrix.test-size }}.zip
