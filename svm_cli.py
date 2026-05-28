@@ -295,14 +295,14 @@ def run_svm_analysis(test_size=0.2):
     df["prediksi"] = grid.predict(X)
 
     # Save results
-    df.to_csv(export_dir / "dataset_with_predictions.csv", index=False)
+    df.to_csv(export_dir / "dataset_with_predictions.csv")
 
     test_results = pd.DataFrame({
         'text': X_test, 
         'actual': y_test, 
         'prediksi': grid.predict(X_test)
     })
-    test_results.to_csv(export_dir / "test_set_predictions.csv", index=False)
+    test_results.to_csv(export_dir / "test_set_predictions.csv)
 
     # Classification Report
     with open(export_dir / "classification_report.json", "w") as f:
