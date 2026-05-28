@@ -302,7 +302,7 @@ def run_svm_analysis(test_size=0.2):
         'actual': y_test, 
         'prediksi': grid.predict(X_test)
     })
-    test_results.to_csv(export_dir / "test_set_predictions.csv)
+    test_results.to_csv(export_dir / "test_set_predictions.csv")
 
     # Classification Report
     with open(export_dir / "classification_report.json", "w") as f:
