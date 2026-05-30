@@ -321,6 +321,9 @@ def run_svm_analysis(test_size=0.2, target_acc=0.80):
     if 'label' not in df.columns:
         raise KeyError("Kolom 'label' tidak ditemukan di dataset!")
 
+    df = df[df['label'] != 'netral']]
+    df = df.reset_index(drop=True)
+
     # Undersampling untuk balance class
     print("Melakukan undersampling...")
     min_count = df["label"].value_counts().min()

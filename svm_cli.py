@@ -239,14 +239,17 @@ def run_svm_analysis(test_size=0.2):
 
     # Load data
     print("Memuat dataset...")
-    # df = pd.read_excel("try_only_en_id_dataset_spaylater.xlsx")
-    df = pd.read_excel("spaylater_dataset_indo_only.xlsx")
+    df = pd.read_excel("try_only_en_id_dataset_spaylater.xlsx")
+    # df = pd.read_excel("spaylater_dataset_indo_only.xlsx")
 
     # Pastikan kolom yang diperlukan ada
     if 'full_text' not in df.columns:
         raise KeyError("Kolom 'full_text' tidak ditemukan di dataset!")
     if 'label' not in df.columns:
         raise KeyError("Kolom 'label' tidak ditemukan di dataset!")
+
+    df = df[df['label'] != 'netral']
+    df = df.reset_index(drop=True)
 
     # Undersampling untuk balance class
     print("Melakukan undersampling...")
