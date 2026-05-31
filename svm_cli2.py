@@ -311,8 +311,8 @@ def run_svm_analysis(test_size=0.2, target_acc=0.88):
 
     # Load data
     print("Memuat dataset...")
-    df = pd.read_csv("dataset_dengan_label_20260412_061422.csv")
-    # df = pd.read_excel("try_only_en_id_dataset_spaylater.xlsx")
+    # df = pd.read_csv("dataset_dengan_label_20260412_061422.csv")
+    df = pd.read_excel("try_only_en_id_dataset_spaylater.xlsx")
     # df = pd.read_excel("spaylater_dataset_indo_only.xlsx")
 
     # Pastikan kolom yang diperlukan ada
